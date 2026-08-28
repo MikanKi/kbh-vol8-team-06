@@ -17,6 +17,10 @@ npm run dev
 
 `http://localhost:5173` を開きます。PR前には必ず `npm run build` を実行してください。
 
+## CI（GitHub Actions）
+
+リポジトリ直下の `.github/workflows/ci.yml` に、GitHub Actionsの自動チェックを用意しています。`main` へのpushとPull Requestで、Node.js 20による `npm ci` と `npm run build` を実行します。GitHubへリポジトリをpushすれば、Actionsタブから実行結果を確認できます。
+
 ## C担当：通知基盤の利用方法
 
 `src/lib/push-notifications.ts` の `subscribeToPushNotifications()` を、画面側の「通知を有効にする」ボタンから呼び出します。戻り値の購読情報は、バックエンドの `POST /api/push-subscriptions` に送信して保存します。
@@ -46,6 +50,39 @@ npm run dev:api
 ```
 
 通知の送信処理は `npm run notify:due` で1回だけ実行されます。本番では、このコマンドを1分ごとに実行するスケジューラへ設定します。
+
+開発中に1分ごと自動確認を続ける場合は、3つ目のターミナルで次を実行します。停止するときは `Ctrl + C` を押します。
+
+```powershell
+npm run notify:watch
+```
+
+## 京都バスGTFS-JPの定期更新
+
+ODPT開発者サイトで発行したconsumer keyを `.env.server` の `ODPT_CONSUMER_KEY` に設定します。すでに通知用テーブルを作成済みの場合は、SupabaseのSQL Editorで `db/002_gtfs_schema.sql` を実行してGTFS用テーブルを追加してください。
+
+```powershell
+npm install
+npm run gtfs:import:kyoto-bus
+```
+
+正常終了すると、`gtfs_stops`、`gtfs_routes`、`gtfs_trips`、`gtfs_stop_times`、`gtfs_calendar`、`gtfs_calendar_dates` に京都バスの最新GTFS-JPが取り込まれます。定期更新では、このコマンドを毎日1回スケジューラで実行します。
+
+## ODPT承認前：公式時刻表の手入力版
+
+Supabase SQL Editorで `db/003_manual_kyoto_bus.sql` を実行すると、次の3方向を登録します。
+
+- 赤の宮 → 大原方面（stopId: `6001_2`）
+- 朝露ヶ原町 → 出町柳・北大路方面（stopId: `472_1`）
+- 飛鳥井町 → 京都駅前方面（stopId: `906_1`）
+
+平日の最終便は登録済みです。土曜・休日は、未確認の時刻で通知しないよう未登録にしています。公式時刻表で確認後、SQLファイル末尾の `UPDATE` の形式で追加してください。
+
+画面担当は、次のAPIを使って最終便を取得できます。`dayType` は `weekday`、`saturday`、`holiday` のいずれかです。
+
+```text
+GET http://localhost:8787/api/manual-last-departures?stopId=6001_2&dayType=weekday
+```
 
 ## 担当間の接続点
 

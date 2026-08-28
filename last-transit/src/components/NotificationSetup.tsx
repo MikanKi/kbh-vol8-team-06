@@ -6,7 +6,7 @@ import {
 } from '../lib/push-notifications'
 
 type NotificationSetupProps = {
-  onSubscribed?: (subscription: PushSubscriptionPayload) => Promise<unknown>
+  onSubscribed?: (subscription: PushSubscriptionPayload) => Promise<{ id: string }>
 }
 
 export default function NotificationSetup({ onSubscribed }: NotificationSetupProps) {

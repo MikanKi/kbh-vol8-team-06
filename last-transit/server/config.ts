@@ -14,3 +14,10 @@ export const config = {
   vapidPublicKey: requiredEnvironmentValue('VAPID_PUBLIC_KEY'),
   vapidSubject: requiredEnvironmentValue('VAPID_SUBJECT'),
 }
+
+export function gtfsConfig() {
+  return {
+    kyotoBusGtfsUrl: requiredEnvironmentValue('KYOTO_BUS_GTFS_URL'),
+    odptConsumerKey: requiredEnvironmentValue('ODPT_CONSUMER_KEY'),
+  }
+}

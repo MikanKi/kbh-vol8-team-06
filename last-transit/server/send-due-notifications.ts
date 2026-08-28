@@ -1,4 +1,5 @@
 import webpush, { type PushSubscription } from 'web-push'
+import { pathToFileURL } from 'node:url'
 import { config } from './config.js'
 import { pool } from './database.js'
 
@@ -50,7 +51,7 @@ async function claimDueNotifications(): Promise<DueNotification[]> {
   }
 }
 
-async function sendNotifications() {
+export async function sendDueNotifications() {
   const notifications = await claimDueNotifications()
 
   for (const notification of notifications) {
@@ -85,13 +86,20 @@ async function sendNotifications() {
       console.error(`通知 ${notification.scheduleId} の送信に失敗しました。`, error)
     }
   }
+
+  return notifications.length
 }
 
-sendNotifications()
-  .catch((error: unknown) => {
-    console.error('通知の定期実行に失敗しました。', error)
-    process.exitCode = 1
-  })
-  .finally(async () => {
-    await pool.end()
-  })
+const isDirectExecution = process.argv[1]
+  && import.meta.url === pathToFileURL(process.argv[1]).href
+
+if (isDirectExecution) {
+  sendDueNotifications()
+    .catch((error: unknown) => {
+      console.error('通知の定期実行に失敗しました。', error)
+      process.exitCode = 1
+    })
+    .finally(async () => {
+      await pool.end()
+    })
+}

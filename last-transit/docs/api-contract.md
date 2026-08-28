@@ -42,6 +42,31 @@ A担当が返した最終便情報に対して、通知予定を作成・更新�
 }
 ```
 
+## `GET /api/manual-last-departures`
+
+ODPTのGTFS-JPデータを取り込むまでの暫定APIです。3つの京都バス方向に限り、公式時刻表を手入力した最終便を返します。`dayType` は画面側で選択して渡します。国民の祝日を自動判定しないため、休日は `holiday` を明示します。
+
+```text
+GET /api/manual-last-departures?stopId=6001_2&dayType=weekday
+```
+
+### 成功レスポンス
+
+```json
+{
+  "stopId": "6001_2",
+  "stopName": "赤の宮",
+  "directionLabel": "大原方面",
+  "dayType": "weekday",
+  "lastDepartureTime": "19:36:00",
+  "routeLabel": "特17 大原行",
+  "sourceUrl": "https://www.kyotobus.jp/route/timetable/schedule.html?stop_id=6001_2",
+  "sourceCheckedAt": "2026-08-28"
+}
+```
+
+最終便が未登録の場合は `404` を返します。画面側では「この運行日の時刻は確認中です」と表示してください。
+
 ## 定期実行
 
 1分ごとに `notification_schedules` の `status = 'pending'` かつ `notify_at <= NOW()` を取得します。Push送信が成功したら `sent` と `sent_at` を更新し、410または404なら対応する購読を無効化します。

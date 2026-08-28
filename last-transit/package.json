@@ -7,10 +7,14 @@
     "dev": "vite",
     "dev:api": "tsx watch --env-file=.env.server server/index.ts",
     "build": "tsc -b && vite build",
+    "gtfs:import:kyoto-bus": "tsx --env-file=.env.server server/import-kyoto-bus-gtfs.ts",
     "notify:due": "tsx --env-file=.env.server server/send-due-notifications.ts",
+    "notify:watch": "tsx --env-file=.env.server server/notify-loop.ts",
     "preview": "vite preview"
   },
   "dependencies": {
+    "adm-zip": "^0.5.16",
+    "csv-parse": "^6.0.0",
     "pg": "^8.0.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
@@ -18,6 +22,7 @@
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.0.0",
+    "@types/adm-zip": "^0.5.7",
     "@types/node": "^22.0.0",
     "@types/pg": "^8.0.0",
     "@types/react": "^19.0.0",
