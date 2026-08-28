@@ -36,9 +36,9 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 ## ディレクトリ
 
-- `src/App.tsx` … 画面のルート
-- `src/components/` … 部品。1ファイル1コンポーネント
-- `src/index.css` … 全体のスタイル。Tailwind をここで読み込んでいる
+- `src/app/page.tsx` … 画面のルート
+- `src/app/layout.tsx` … レイアウト。1ファイル1コンポーネント
+- `src/globals.css` … 全体のスタイル。Tailwind をここで読み込んでいる
 - `public/` … 画像などそのまま配信されるファイル
 - `node_modules/` `dist/` … 生成物。**触らない・コミットしない**
 
