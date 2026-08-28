@@ -16,9 +16,24 @@ type NotificationScheduleRequest = {
 
 type DayType = 'weekday' | 'saturday' | 'holiday'
 
-function sendJson(response: ServerResponse, statusCode: number, body: unknown) {
+function corsOrigin(request: IncomingMessage) {
+  const origin = request.headers.origin
+  if (!origin) return config.appOrigin
+
+  try {
+    const url = new URL(origin)
+    const isViteDevelopmentServer = url.hostname === 'localhost' && /^517\d$/.test(url.port)
+    if (isViteDevelopmentServer) return origin
+  } catch {
+    // 不正なOriginは本番用の許可Originとして扱います。
+  }
+
+  return config.appOrigin
+}
+
+function sendJson(response: ServerResponse, statusCode: number, body: unknown, origin: string) {
   response.writeHead(statusCode, {
-    'Access-Control-Allow-Origin': config.appOrigin,
+    'Access-Control-Allow-Origin': origin,
     'Access-Control-Allow-Headers': 'Content-Type',
     'Access-Control-Allow-Methods': 'OPTIONS, GET, POST',
     'Content-Type': 'application/json; charset=utf-8',
@@ -42,8 +57,10 @@ async function readJson(request: IncomingMessage): Promise<unknown> {
 }
 
 const server = createServer(async (request, response) => {
+  const respond = (statusCode: number, body: unknown) => sendJson(response, statusCode, body, corsOrigin(request))
+
   if (request.method === 'OPTIONS') {
-    sendJson(response, 204, null)
+    respond(204, null)
     return
   }
 
@@ -54,7 +71,7 @@ const server = createServer(async (request, response) => {
     const dayType = requestUrl.searchParams.get('dayType')
 
     if (!stopId || !isDayType(dayType)) {
-      sendJson(response, 400, { error: 'stopIdとdayType（weekday / saturday / holiday）が必要です。' })
+      respond(400, { error: 'stopIdとdayType（weekday / saturday / holiday）が必要です。' })
       return
     }
 
@@ -75,21 +92,21 @@ const server = createServer(async (request, response) => {
 
       const departure = result.rows[0]
       if (!departure || !departure.lastDepartureTime) {
-        sendJson(response, 404, { error: 'この停留所・運行日の最終便はまだ登録されていません。' })
+        respond(404, { error: 'この停留所・運行日の最終便はまだ登録されていません。' })
         return
       }
 
-      sendJson(response, 200, departure)
+      respond(200, departure)
       return
     } catch (error) {
       const message = error instanceof Error ? error.message : '最終便データの取得に失敗しました。'
-      sendJson(response, 500, { error: message })
+      respond(500, { error: message })
       return
     }
   }
 
   if (request.method !== 'POST') {
-    sendJson(response, 404, { error: '見つからないAPIです。' })
+    respond(404, { error: '見つからないAPIです。' })
     return
   }
 
@@ -97,7 +114,7 @@ const server = createServer(async (request, response) => {
     if (request.url === '/api/push-subscriptions') {
       const body = await readJson(request) as PushSubscriptionRequest
       if (!body.endpoint || !body.keys?.p256dh || !body.keys.auth) {
-        sendJson(response, 400, { error: '通知の購読情報が不完全です。' })
+        respond(400, { error: '通知の購読情報が不完全です。' })
         return
       }
 
@@ -112,7 +129,7 @@ const server = createServer(async (request, response) => {
         RETURNING id
       `, [body.endpoint, body.keys.p256dh, body.keys.auth])
 
-      sendJson(response, 201, { id: result.rows[0].id, status: 'active' })
+      respond(201, { id: result.rows[0].id, status: 'active' })
       return
     }
 
@@ -129,7 +146,7 @@ const server = createServer(async (request, response) => {
         || Number.isNaN(departureAt.getTime())
         || Number.isNaN(notifyAt.getTime())
       ) {
-        sendJson(response, 400, { error: '通知予定の情報が不完全です。' })
+        respond(400, { error: '通知予定の情報が不完全です。' })
         return
       }
 
@@ -148,14 +165,14 @@ const server = createServer(async (request, response) => {
         RETURNING id, status
       `, [body.pushSubscriptionId, body.tripId, departureAt, notifyAt])
 
-      sendJson(response, 201, result.rows[0])
+      respond(201, result.rows[0])
       return
     }
 
-    sendJson(response, 404, { error: '見つからないAPIです。' })
+    respond(404, { error: '見つからないAPIです。' })
   } catch (error) {
     const message = error instanceof Error ? error.message : '通知設定の保存に失敗しました。'
-    sendJson(response, 500, { error: message })
+    respond(500, { error: message })
   }
 })
 

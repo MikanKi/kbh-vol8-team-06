@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { saveNotificationSchedule } from '../lib/notification-schedule-api'
 
 type DayType = 'weekday' | 'saturday' | 'holiday'
@@ -35,6 +35,23 @@ function formatTime(value: string) {
   return value.slice(0, 5)
 }
 
+function departureDate(serviceDate: string, time: string) {
+  return new Date(`${serviceDate}T${formatTime(time)}:00+09:00`)
+}
+
+function remainingTimeText(serviceDate: string, time: string, now: number) {
+  const departureAt = departureDate(serviceDate, time)
+  const difference = departureAt.getTime() - now
+  const minutes = Math.ceil(difference / 60_000)
+
+  if (difference < 0) return 'この最終便は出発済みです。'
+  if (minutes === 0) return 'まもなく出発です。'
+
+  const hours = Math.floor(minutes / 60)
+  const remainingMinutes = minutes % 60
+  return hours > 0 ? `あと${hours}時間${remainingMinutes}分` : `あと${remainingMinutes}分`
+}
+
 type ManualLastDepartureProps = {
   pushSubscriptionId: string | null
 }
@@ -57,6 +74,12 @@ export default function ManualLastDeparture({ pushSubscriptionId }: ManualLastDe
   const [serviceDate, setServiceDate] = useState(todayInJapan)
   const [minutesBefore, setMinutesBefore] = useState('30')
   const [notificationMessage, setNotificationMessage] = useState('')
+  const [currentTime, setCurrentTime] = useState(Date.now())
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setCurrentTime(Date.now()), 60_000)
+    return () => window.clearInterval(timer)
+  }, [])
 
   async function handleSearch() {
     setIsLoading(true)
@@ -91,7 +114,7 @@ export default function ManualLastDeparture({ pushSubscriptionId }: ManualLastDe
       return
     }
 
-    const departureAt = new Date(`${serviceDate}T${formatTime(result.lastDepartureTime)}:00+09:00`)
+    const departureAt = departureDate(serviceDate, result.lastDepartureTime)
     const leadMinutes = Number(minutesBefore)
     const notifyAt = new Date(departureAt.getTime() - leadMinutes * 60_000)
 
@@ -166,6 +189,9 @@ export default function ManualLastDeparture({ pushSubscriptionId }: ManualLastDe
         <div className="mt-4 rounded-xl bg-teal-50 p-4 text-slate-900">
           <p className="text-sm font-medium">{result.stopName} → {result.directionLabel}</p>
           <p className="mt-1 text-3xl font-bold">最終便 {formatTime(result.lastDepartureTime)}</p>
+          <p className="mt-2 text-lg font-semibold text-teal-900">
+            {remainingTimeText(serviceDate, result.lastDepartureTime, currentTime)}
+          </p>
           {result.routeLabel && <p className="mt-2 text-sm">{result.routeLabel}</p>}
           <a className="mt-3 inline-block text-sm font-medium text-teal-800 underline" href={result.sourceUrl} rel="noreferrer" target="_blank">
             京都バス公式時刻表を確認する
