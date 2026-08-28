@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "dev:api": "tsx watch --env-file=.env.server server/index.ts",
+    "import:kyoto-bus": "tsx --env-file=.env.server scripts/import-kyoto-bus.ts",
     "build": "tsc -b && vite build",
     "notify:due": "tsx --env-file=.env.server server/send-due-notifications.ts",
     "preview": "vite preview"

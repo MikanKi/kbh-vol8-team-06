@@ -17,6 +17,16 @@ npm run dev
 
 `http://localhost:5173` を開きます。PR前には必ず `npm run build` を実行してください。
 
+## 京都市バスGTFSの取込と最終便API
+
+京都市バス（GTFS-JP）のみを利用します。配布ZIPを展開してから、SupabaseのSQL Editorで `supabase/migrations/20260828000000_kyoto_bus_timetable.sql` を実行し、次を実行します。
+
+```powershell
+npm run import:kyoto-bus -- C:\path\to\unpacked-gtfs
+```
+
+`DATABASE_URL` は `.env.server` に設定します。最終便APIは `supabase/functions/last-departures/index.ts`、停留所選択用は `supabase/functions/bus-stops/index.ts` のEdge Functionです。`supabase functions deploy last-departures --no-verify-jwt` と `supabase functions deploy bus-stops --no-verify-jwt` でデプロイし、画面用の `.env.local` に `VITE_API_BASE_URL=https://<project-ref>.supabase.co/functions/v1` を設定してください。
+
 ## C担当：通知基盤の利用方法
 
 `src/lib/push-notifications.ts` の `subscribeToPushNotifications()` を、画面側の「通知を有効にする」ボタンから呼び出します。戻り値の購読情報は、バックエンドの `POST /api/push-subscriptions` に送信して保存します。

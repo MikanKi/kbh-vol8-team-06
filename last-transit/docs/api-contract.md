@@ -2,6 +2,28 @@
 
 フロントエンドは、認証情報やVAPID秘密鍵を扱いません。Push購読情報の保存と通知送信はサーバーが担当します。
 
+## `GET /functions/v1/last-departures?stopId={停留所ID}`
+
+Supabase Edge Functionが京都市バスの停留所IDを受け取り、当日の運行日・例外運行を考慮した路線／行先ごとの最終便を返します。`date=YYYY-MM-DD` を指定すると、その日の結果を確認できます。通知設定時に使う `tripId` も含まれます。
+
+```json
+{
+  "stopId": "1001",
+  "serviceDate": "2026-08-28",
+  "departures": [
+    {
+      "tripId": "gtfs-trip-id",
+      "routeId": "route-id",
+      "routeName": "206",
+      "headsign": "京都駅前",
+      "departureTime": "24:05"
+    }
+  ]
+}
+```
+
+停留所プルダウンは `GET /functions/v1/bus-stops` を使います。どちらもサービスロールキーをEdge Function内にだけ置き、ブラウザには公開しません。
+
 ## `POST /api/push-subscriptions`
 
 ブラウザで通知を許可した直後に呼び出します。同じ `endpoint` が届いた場合は、新規作成ではなく既存の購読情報を更新します。
