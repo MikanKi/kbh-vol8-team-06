@@ -1,0 +1,64 @@
+# 終電・終バス通知
+
+京都府内の利用者が、手入力した出発地・目的地に対して最終便までの残り時間を確認し、通知を受け取るWebアプリです。
+
+## 開発環境
+
+- Node.js 20以上（npm同梱版）
+- npm
+
+初回だけ以下を実行します。
+
+```powershell
+npm install
+Copy-Item .env.example .env.local
+npm run dev
+```
+
+`http://localhost:5173` を開きます。PR前には必ず `npm run build` を実行してください。
+
+## C担当：通知基盤の利用方法
+
+`src/lib/push-notifications.ts` の `subscribeToPushNotifications()` を、画面側の「通知を有効にする」ボタンから呼び出します。戻り値の購読情報は、バックエンドの `POST /api/push-subscriptions` に送信して保存します。
+
+本番では次を設定します。
+
+- `VITE_VAPID_PUBLIC_KEY`: Web Pushの公開鍵
+- サーバー側のみ: VAPID秘密鍵、購読情報を保管するDB接続情報
+
+秘密鍵は `VITE_` を付けた環境変数に絶対に置かないでください。`VITE_` の変数はブラウザに配信されます。
+
+## Supabaseと通知APIの設定
+
+1. Supabaseで新しいプロジェクトを作成し、SQL Editorで `db/schema.sql` を実行します。
+2. SupabaseのConnect画面で取得したPostgreSQL接続文字列を使い、`.env.server.example` をコピーして `.env.server` を作成します。
+3. 次のコマンドでVAPID鍵を生成し、公開鍵は `.env.local` と `.env.server` に、秘密鍵は `.env.server` にだけ設定します。
+
+```powershell
+npx web-push generate-vapid-keys --json
+```
+
+4. ターミナルを2つ開き、片方で画面、もう片方でAPIを起動します。
+
+```powershell
+npm run dev
+npm run dev:api
+```
+
+通知の送信処理は `npm run notify:due` で1回だけ実行されます。本番では、このコマンドを1分ごとに実行するスケジューラへ設定します。
+
+## 担当間の接続点
+
+- A担当は、最終便・通知時刻を返すAPIを実装する
+- B担当は、通知を有効化するUIから購読関数を呼び出す
+- C担当は、購読情報保存API、最終便前にPushを送る定期実行、運用環境を接続する
+
+サービスワーカーはプッシュ通知を受けて表示するだけで、指定時刻に自力で確実な通知を予約できません。通知時刻の判定と送信はサーバー側の定期実行で行います。
+
+サーバー実装時のテーブル定義は `db/schema.sql`、A・B担当と共有するリクエスト形式は `docs/api-contract.md` を参照してください。
+
+`NotificationSetup` は購読情報を受け渡せるようにしてあります。B担当が保存APIをつないだ後は、次のように利用します。
+
+```tsx
+<NotificationSetup onSubscribed={(subscription) => postPushSubscription(subscription)} />
+```
