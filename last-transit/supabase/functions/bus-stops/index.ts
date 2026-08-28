@@ -1,4 +1,5 @@
-const source = 'kyoto-city-bus'
+// 最終便 API と同じデータ提供元にそろえる。
+const source = 'kyoto-bus'
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',

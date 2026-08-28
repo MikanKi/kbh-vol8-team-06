@@ -20,7 +20,9 @@ type Calendar = {
   sunday: boolean
 }
 
-const source = 'kyoto-city-bus'
+// 現在は京都バスのデモデータを提供する。GTFS の全件取込へ切り替える際は、
+// 取込元とこの値を同じ source に統一すること。
+const source = 'kyoto-bus'
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
