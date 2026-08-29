@@ -205,18 +205,25 @@ export default function Home() {
     if (!subscriptionApiUrl || !vapidPublicKey) {
       throw new Error("通知購読の設定が不足しています。");
     }
-
     const registration = await navigator.serviceWorker.ready;
     const subscription = await registration.pushManager.subscribe({
       userVisibleOnly: true,
       applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
     });
+    
+    console.log("URL:", subscriptionApiUrl);
+    console.log("subscription:", subscription.toJSON());
+
     const response = await fetch(subscriptionApiUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(subscription.toJSON()),
     });
 
+    console.log("status:", response.status);
+    console.log("response:", await response.text());
+
+    
     if (!response.ok) {
       const errorBody = (await response.json().catch(() => null)) as { error?: string } | null;
       throw new Error(errorBody?.error ?? "通知購読情報の送信に失敗しました。");
@@ -234,13 +241,15 @@ export default function Home() {
       setIsNotificationUpdating(true);
       const permission = await Notification.requestPermission();
       setNotificationPermission(permission);
-
+      
       if (permission !== "granted") {
         setSubscriptionError("通知が許可されなかったため、有効にできませんでした。");
         return;
       }
-
+      
+      // console.log("start subscribeToPushNotifications");
       await subscribeToPushNotifications();
+      // console.log("finish subscribeToPushNotifications");
       setIsNotificationEnabled(true);
     } catch (error) {
       setSubscriptionError(error instanceof Error ? error.message : "通知購読情報の送信に失敗しました。");

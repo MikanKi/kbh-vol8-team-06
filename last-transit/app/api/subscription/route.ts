@@ -47,13 +47,26 @@ export async function POST(request: NextRequest) {
         headers: corsHeaders,
       },
     );
-  } catch (error) {
-    return NextResponse.json(
-      { error: "Failed to process subscription" },
-      {
-        status: 500,
-        headers: corsHeaders,
-      },
-    );
-  }
+  // } catch (error) {
+  //   return NextResponse.json(
+  //     { error: "Failed to process subscription" },
+  //     {
+  //       status: 500,
+  //       headers: corsHeaders,
+  //     },
+  //   );
+  // }
+  }catch (error) {
+  console.error("Push subscription error:", error);
+
+  return NextResponse.json(
+    {
+      error: String(error),
+    },
+    {
+      status: 500,
+      headers: corsHeaders,
+    },
+  );
+}
 }
