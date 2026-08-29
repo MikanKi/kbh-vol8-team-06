@@ -66,6 +66,11 @@ const server = createServer(async (request, response) => {
 
   const requestUrl = new URL(request.url ?? '/', `http://${request.headers.host ?? 'localhost'}`)
 
+  if (request.method === 'GET' && requestUrl.pathname === '/api/push-config') {
+    respond(200, { vapidPublicKey: config.vapidPublicKey })
+    return
+  }
+
   if (request.method === 'GET' && requestUrl.pathname === '/api/manual-last-departures') {
     const stopId = requestUrl.searchParams.get('stopId')
     const dayType = requestUrl.searchParams.get('dayType')

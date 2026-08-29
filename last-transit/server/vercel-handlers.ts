@@ -55,6 +55,10 @@ export function options(request: Request) {
   })
 }
 
+export function getPushConfig(request: Request) {
+  return json(request, 200, { vapidPublicKey: config.vapidPublicKey })
+}
+
 export async function savePushSubscription(request: Request) {
   const body = await request.json() as PushSubscriptionRequest
   if (!body.endpoint || !body.keys?.p256dh || !body.keys.auth) {

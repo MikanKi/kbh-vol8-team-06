@@ -2,6 +2,18 @@
 
 フロントエンドは、認証情報やVAPID秘密鍵を扱いません。Push購読情報の保存と通知送信はサーバーが担当します。
 
+## `GET /api/push-config`
+
+PWAはこのAPIからVAPID公開鍵を取得できます。秘密鍵は絶対にレスポンスへ含めません。
+
+### 成功レスポンス
+
+```json
+{
+  "vapidPublicKey": "Base64URL形式の公開鍵"
+}
+```
+
 ## `POST /api/push-subscriptions`
 
 ブラウザで通知を許可した直後に呼び出します。同じ `endpoint` が届いた場合は、新規作成ではなく既存の購読情報を更新します。
