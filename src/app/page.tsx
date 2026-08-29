@@ -7,6 +7,7 @@ import { CountdownCircleTimer } from "react-countdown-circle-timer";
 type BusStop = { stop_id: string; stop_name: string };
 type Departure = { routeId: string; headsign: string; departureTime: string };
 type LastDepartures = { stopId: string; serviceDate: string; departures: Departure[] };
+const notificationOffsets = [1800, 900, 300];
 
 function urlBase64ToUint8Array(base64String: string) {
   const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
@@ -169,6 +170,43 @@ function BusSelector({ onDurationChange, onMissedBusChange }: {
   );
 }
 
+function NotificationScheduler({ departureDuration }: { departureDuration: number }) {
+  useEffect(() => {
+    const timers: number[] = [];
+    if (departureDuration <= 0) return () => undefined;
+
+    const showNotification = async () => {
+      if (!("Notification" in window) || Notification.permission !== "granted") return;
+
+      const title = "終バス通知";
+      const body = "終バスの時間が迫ってきています。急いでください";
+
+      if ("serviceWorker" in navigator) {
+        const registration = await navigator.serviceWorker.ready;
+        await registration.showNotification(title, { body });
+      } else {
+        new Notification(title, { body });
+      }
+    };
+
+    for (const offset of notificationOffsets) {
+      const delaySec = departureDuration - offset;
+      if (delaySec >= 0) {
+        const t = window.setTimeout(() => {
+          void showNotification();
+        }, delaySec * 1000);
+        timers.push(t);
+      }
+    }
+
+    return () => {
+      timers.forEach((id) => clearTimeout(id));
+    };
+  }, [departureDuration]);
+
+  return null;
+}
+
 export default function Home() {
   const [duration, setDuration] = useState(0);
   const [isMissedBus, setIsMissedBus] = useState(false);
@@ -275,6 +313,7 @@ export default function Home() {
 
   return (
     <main className="min-h-screen bg-zinc-50 px-6 py-12 text-zinc-900">
+      <NotificationScheduler departureDuration={duration} />
       <div className="mx-auto max-w-xl space-y-8">
         <header><h1 className="mt-2 text-3xl font-bold text-teal-800">最寄りまで急げ！</h1><p className="mt-3 text-zinc-400">バスを選んで、終バスの前に通知する</p></header>
 
