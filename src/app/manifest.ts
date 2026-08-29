@@ -2,8 +2,8 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "終バス通知",
-    short_name: "終バス通知",
+    name: "最寄りまで急げ！",
+    short_name: "最寄り急げ！",
     description: "京都府の終バスを確認するアプリ",
     start_url: "/",
     display: "standalone",

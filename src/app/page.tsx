@@ -214,11 +214,12 @@ export default function Home() {
     const response = await fetch(subscriptionApiUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ subscription: subscription.toJSON() }),
+      body: JSON.stringify(subscription.toJSON()),
     });
 
     if (!response.ok) {
-      throw new Error("通知購読情報の送信に失敗しました。");
+      const errorBody = (await response.json().catch(() => null)) as { error?: string } | null;
+      throw new Error(errorBody?.error ?? "通知購読情報の送信に失敗しました。");
     }
   };
 
