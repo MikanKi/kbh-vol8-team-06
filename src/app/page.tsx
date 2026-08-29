@@ -1,487 +1,312 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Image from "next/image";
 import { CountdownCircleTimer } from "react-countdown-circle-timer";
 
-const initialDestinations = ["京都駅", "四条河原町", "三条京阪", "出町柳"];
-const initialSavedAddresses = ["自宅（中京区）", "職場（京都駅周辺）", "よく行く場所（祇園）"];
+type BusStop = { stop_id: string; stop_name: string };
+type Departure = { routeId: string; headsign: string; departureTime: string };
+type LastDepartures = { stopId: string; serviceDate: string; departures: Departure[] };
+
+function urlBase64ToUint8Array(base64String: string) {
+  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+  const rawData = window.atob(base64);
+
+  return Uint8Array.from(rawData, (character) => character.charCodeAt(0));
+}
+
+function getRequestDate() {
+  const parts = new Intl.DateTimeFormat("ja-JP", {
+    timeZone: "Asia/Tokyo", year: "numeric", month: "2-digit", day: "2-digit",
+  }).formatToParts(new Date());
+  const date = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  return `${date.year}-${date.month}-${date.day}`;
+}
 
 function Timer({ duration = 0 }: { duration?: number }) {
   return (
-    <div>
-      <CountdownCircleTimer
-        key={duration}
-        isPlaying={duration > 0}
-        duration={duration}
-        colors={["#0099ff", "#F7B801", "#A30000"]}
-        colorsTime={[1800, 900, 300, 0]}
-        isSmoothColorTransition={false}
-      >
-        {({ remainingTime }) => {
-          const hours = Math.floor(remainingTime / 3600);
-          const minutes = String(Math.floor(remainingTime % 3600 /60)).padStart(2,"0");
-          const seconds = String(remainingTime % 60).padStart(2, "0");
-          return (
-            <span className="font-mono text-3xl sm:text-3xl font-bold text-white">
-              {hours}:{minutes}:{seconds}
-            </span>
-          );
-        }}
-      </CountdownCircleTimer>
-    </div>
+    <CountdownCircleTimer key={duration} isPlaying={duration > 0} duration={duration}
+      colors={["#0099ff", "#F7B801", "#A30000"]} colorsTime={[1800, 900, 300, 0]}
+      isSmoothColorTransition={false}>
+      {({ remainingTime }) => {
+        const hours = Math.floor(remainingTime / 3600);
+        const minutes = String(Math.floor((remainingTime % 3600) / 60)).padStart(2, "0");
+        const seconds = String(remainingTime % 60).padStart(2, "0");
+        return <span className="font-mono text-3xl font-bold text-white">{hours}:{minutes}:{seconds}</span>;
+      }}
+    </CountdownCircleTimer>
   );
 }
 
-function BusSelector({
-  onDurationChange,
-  onMissedBusChange,
-}: {
+function BusSelector({ onDurationChange, onMissedBusChange }: {
   onDurationChange: (duration: number) => void;
   onMissedBusChange: (isMissed: boolean) => void;
 }) {
-  const busData: Record<string, any> = {
-    "京都市バス": {
-      "京都市役所前": {
-        "32": {
-          "四条河原町・西京極行き": {
-            "平日": "22.08",
-            "土曜日": "22.08",
-            "休日": "22.08",
-          },
-          "平安神宮･銀閣寺行き": {
-            "平日": "21.34",
-            "土曜日": "21.34",
-            "休日": "21.34",
-          },
-        },
-        "3": {
-          "四条河原町･松尾橋行き": {
-            "平日": "22.56",
-            "土曜日": "22.56",
-            "休日": "22.56",
-          },
-          "北白川仕伏町(上終町・瓜生山学園 京都芸術大学前)行き": {
-            "平日": "22.20",
-            "土曜日": "22.20",
-            "休日": "22.20",
-          },
-        },
-      },
-      "四条河原町": {
-        "12": {
-          "三条京阪行き": {
-            "平日": "22.04",
-            "土曜日": "22.04",
-            "休日": "22.04",
-          },
-          "金閣寺・立命館大学行き": {
-            "平日": "22.19",
-            "土曜日": "22.19",
-            "休日": "22.19",
-          },
-        },
-        "5": {
-          "京都駅 行き": {
-            "平日": "22.49",
-            "土曜日": "22.49",
-            "休日": "22.49",
-          },
-          "銀閣寺･岩倉 行き": {
-            "平日": "23.14",
-            "土曜日": "23.14",
-            "休日": "23.14",
-          },
-        },
-      },
-    },
-    "京都バス": {
-      "京都駅前": {
-        "17": {
-          "大原行き": {
-            "平日": "18.57",
-            "土曜日": "18.57",
-            "休日": "18.57",
-          },
-        },
-        "51": {
-          "延暦寺・比叡山頂行き": {
-            "平日": "18.52",
-            "土曜日": "18.52",
-            "休日": "18.52",
-          },
-        },
-      },
-      "四条河原町": {
-        "17": {
-          "京都駅前行き": {
-            "平日": "22.42",
-            "土曜日": "22.42",
-            "休日": "22.42",
-          },
-          "大原行き": {
-            "平日": "19.12",
-            "土曜日": "19.12",
-            "休日": "19.12",
-          },
-        },
-        "41": {
-          "岩倉村松行き": {
-            "平日": "22.42",
-            "土曜日": "22.42",
-            "休日": "22.42"
-          },
-        },
-      },
-    },
-  };
-
   const [isOpen, setIsOpen] = useState(false);
-  const [selectedType, setSelectedType] = useState<string | null>(null);
-  const [selectedStop, setSelectedStop] = useState<string | null>(null);
-  const [selectedNumber, setSelectedNumber] = useState<string | null>(null);
+  const [busStops, setBusStops] = useState<BusStop[]>([]);
+  const [selectedStop, setSelectedStop] = useState<BusStop | null>(null);
+  const [lastDepartures, setLastDepartures] = useState<LastDepartures | null>(null);
   const [selectedDirection, setSelectedDirection] = useState<string | null>(null);
   const [lastBusTime, setLastBusTime] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [apiError, setApiError] = useState<string | null>(null);
 
-  const types = Object.keys(busData);
+  useEffect(() => {
+    const controller = new AbortController();
+    const fetchBusStops = async () => {
+      try {
+        const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
+        if (!apiBaseUrl) throw new Error("APIのベースURLが設定されていません。");
+        const response = await fetch(`${apiBaseUrl}/bus-stops`, { signal: controller.signal });
+        if (!response.ok) throw new Error("停留所情報の取得に失敗しました。");
+        const data = (await response.json()) as { stops?: BusStop[] };
+        if (!Array.isArray(data.stops)) throw new Error("停留所情報の形式が正しくありません。");
+        setBusStops(data.stops);
+      } catch (error) {
+        if (error instanceof DOMException && error.name === "AbortError") return;
+        setApiError(error instanceof Error ? error.message : "停留所情報の取得に失敗しました。");
+      }
+    };
+    void fetchBusStops();
+    return () => controller.abort();
+  }, []);
+
+  const selectStop = async (stop: BusStop) => {
+    try {
+      const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
+      if (!apiBaseUrl) throw new Error("APIのベースURLが設定されていません。");
+      setSelectedStop(stop);
+      setLastDepartures(null);
+      setSelectedDirection(null);
+      setLastBusTime(null);
+      setApiError(null);
+      setIsLoading(true);
+      onDurationChange(0);
+      onMissedBusChange(false);
+      const query = new URLSearchParams({ stopId: stop.stop_id, date: getRequestDate() });
+      const response = await fetch(`${apiBaseUrl}/last-departures?${query}`);
+      if (!response.ok) throw new Error("最終バス情報の取得に失敗しました。");
+      const data = (await response.json()) as LastDepartures;
+      if (data.stopId !== stop.stop_id || !Array.isArray(data.departures)) {
+        throw new Error("最終バス情報の形式が正しくありません。");
+      }
+      setLastDepartures(data);
+    } catch (error) {
+      setApiError(error instanceof Error ? error.message : "最終バス情報の取得に失敗しました。");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const selectDeparture = (departure: Departure, currentTime: number) => {
+    if (!lastDepartures) return;
+    setSelectedDirection(departure.routeId);
+    setLastBusTime(departure.departureTime);
+    const [year, month, day] = lastDepartures.serviceDate.split("-").map(Number);
+    const [hours, minutes] = departure.departureTime.split(":").map(Number);
+    const departureDate = new Date(year, month - 1, day, hours, minutes, 0, 0);
+    const duration = Math.floor((departureDate.getTime() - currentTime) / 1000);
+    onDurationChange(Math.max(duration, 0));
+    onMissedBusChange(duration < 0);
+    setIsOpen(false);
+  };
+
+  const selectedHeadsign = lastDepartures?.departures.find(
+    (departure) => departure.routeId === selectedDirection,
+  )?.headsign;
 
   return (
     <div>
-      <button
-        type="button"
-        aria-haspopup="listbox"
-        aria-expanded={isOpen}
+      <button type="button" aria-haspopup="listbox" aria-expanded={isOpen}
         className="relative z-10 flex w-full items-center justify-between rounded-xl border border-teal-800 bg-white px-3 py-2 text-left text-zinc-900 shadow-sm"
-        onClick={() => setIsOpen((o) => !o)}
-      >
-        <span>
-          {selectedDirection
-            ? `${selectedType} / ${selectedStop} / ${selectedNumber} / ${selectedDirection}`
-            : selectedType
-            ? `${selectedType} / ${selectedStop || "..."}`
-            : "バスを選択してください"}
-        </span>
+        onClick={() => setIsOpen((open) => !open)}>
+        <span>{selectedDirection ? `${selectedStop?.stop_name} / ${selectedHeadsign}` : selectedStop ? `${selectedStop.stop_name} / ...` : "バスを選択してください"}</span>
         <Image src="/down-arrow.png" alt="" width={20} height={20} className={`transition-transform ${isOpen ? "rotate-180" : ""}`} />
       </button>
-
       {isOpen && (
         <div className="absolute z-20 mt-2 w-full overflow-hidden rounded-xl border border-teal-800 bg-white p-1 shadow-lg">
-            <div className = "z-20 mt-2 w-full overflow-hidden rounded-xl  bg-white py-1">
-                <p className = "font-bold">
-                    バスの種類を選択してください
-                </p>
-            </div>
-            
-          {/* Bus types */}
-          <div className="px-1 py-1">
-            {types.map((type) => (
-              <button
-                key={type}
-                type="button"
-                className={`w-full px-3 py-2 text-left text-zinc-900 hover:bg-teal-50 ${selectedType === type ? "bg-teal-100 font-bold" : ""}`}
-                onClick={() => {
-                  setSelectedType(type);
-                  setSelectedStop(null);
-                  setSelectedNumber(null);
-                  setSelectedDirection(null);
-                  setLastBusTime(null);
-                }}
-              >
-                {type}
-              </button>
-            ))}
-          </div>
-
-          {/* Stops */}
-          {selectedType && (
+          <p className="px-3 py-2 font-bold text-zinc-900">停留所を選択してください</p>
+          {busStops.map((stop) => (
+            <button key={stop.stop_id} type="button"
+              className={`w-full px-3 py-2 text-left text-zinc-900 hover:bg-teal-50 ${selectedStop?.stop_id === stop.stop_id ? "bg-teal-100 font-bold" : ""}`}
+              onClick={() => void selectStop(stop)}>{stop.stop_name}</button>
+          ))}
+          {selectedStop && (
             <div className="mt-1 border-t border-teal-100 pt-1">
-
-                <div className = "z-20 mt-2 w-full overflow-hidden rounded-xl  bg-white py-1">
-                    <p className = "font-bold">
-                        停留所の種類を選択してください
-                    </p>
-                </div>
-
-              {Object.keys(busData[selectedType!]).map((stop) => (
-                <button
-                  key={stop}
-                  type="button"
-                  className={`w-full px-3 py-2 text-left text-zinc-900 hover:bg-teal-50 ${selectedStop === stop ? "bg-teal-100 font-bold" : ""}`}
-                  onClick={() => {
-                    setSelectedStop(stop);
-                    setSelectedNumber(null);
-                    setSelectedDirection(null);
-                    setLastBusTime(null);
-                  }}
-                >
-                  {stop}
-                </button>
+              <p className="px-3 py-2 font-bold text-zinc-900">行き先を選択してください</p>
+              {isLoading && <p className="px-3 py-2 text-zinc-600">最終バスを取得中です。</p>}
+              {lastDepartures?.departures.map((departure) => (
+                <button key={departure.routeId} type="button"
+                  className={`w-full px-3 py-2 text-left text-zinc-900 hover:bg-teal-50 ${selectedDirection === departure.routeId ? "bg-teal-100 font-bold" : ""}`}
+                  onClick={() => selectDeparture(departure, Date.now())}>{departure.headsign}</button>
               ))}
-            </div>
-          )}
-
-          {/* Numbers */}
-          {selectedType && selectedStop && (
-            <div className="mt-1 border-t border-teal-100 pt-1">
-
-                <div className = "z-20 mt-2 w-full overflow-hidden rounded-xl  bg-white py-1">
-                    <p className = "font-bold">
-                        系統を選択してください
-                    </p>
-                </div>
-
-              {Object.keys(busData[selectedType!][selectedStop!]).map((num) => (
-                <button
-                  key={num}
-                  type="button"
-                  className={`w-full px-3 py-2 text-left text-zinc-900 hover:bg-teal-50 ${selectedNumber === num ? "bg-teal-100 font-bold" : ""}`}
-                  onClick={() => {
-                    setSelectedNumber(num);
-                    setSelectedDirection(null);
-                    setLastBusTime(null);
-                  }}
-                >
-                  {num}
-                </button>
-              ))}
-            </div>
-          )}
-
-          {/* Directions */}
-          {selectedType && selectedStop && selectedNumber && (
-            
-            <div className="mt-1 border-t border-teal-100 pt-1">
-
-                <div className = "z-20 mt-2 w-full overflow-hidden rounded-xl  bg-white py-1">
-                    <p className = "font-bold">
-                        方面を選択してください
-                    </p>
-                </div>
-            
-              {Object.keys(busData[selectedType!][selectedStop!][selectedNumber!]).map((dir) => (
-                <button
-                  key={dir}
-                  type="button"
-                  className={`w-full px-3 py-2 text-left text-zinc-900 hover:bg-teal-50 ${selectedDirection === dir ? "bg-teal-100 font-bold" : ""}`}
-                  onClick={() => {
-                  setSelectedDirection(dir);
-                    const schedule = busData[selectedType!][selectedStop!][selectedNumber!][dir];
-                    const getDayKey = () => {
-                      const today = new Date();
-                      // Sunday = 0, Saturday = 6
-                      // Placeholder for holiday detection: treat only Sunday as holiday for now
-                      const isHoliday = false; // replace with real holiday check if available
-                      if (today.getDay() === 6) return "土曜日";
-                      if (today.getDay() === 0 || isHoliday) return "休日";
-                      return "平日";
-                    };
-                    const key = getDayKey();
-                    const time = schedule?.[key] ?? Object.values(schedule)[0];
-                    setLastBusTime(time as string);
-                    const [hours, minutes] = (time as string).split(".").map(Number);
-                    const lastBusDate = new Date();
-                    lastBusDate.setHours(hours, minutes, 0, 0);
-                    const calculatedDuration = Math.floor((lastBusDate.getTime() - Date.now()) / 1000);
-
-                    if (calculatedDuration < 0) {
-                      onDurationChange(0);
-                      onMissedBusChange(true);
-                    } else {
-                      onDurationChange(calculatedDuration);
-                      onMissedBusChange(false);
-                    }
-                    setIsOpen(false);
-                  }}
-                >
-                  {dir}
-                </button>
-              ))}
+              {lastDepartures && lastDepartures.departures.length === 0 && <p className="px-3 py-2 text-zinc-600">最終バスが見つかりませんでした。</p>}
             </div>
           )}
         </div>
       )}
-
-      {lastBusTime && (
-        <p className="mt-2 text-sm font-medium text-white">最終バス: {lastBusTime}</p>
-      )}
+      {apiError && <p className="mt-2 text-sm font-medium text-white">{apiError}</p>}
+      {lastBusTime && <p className="mt-2 text-sm font-medium text-white">最終バス: {lastBusTime}</p>}
+      <div className="mt-1 p-1 w-full flex justify-end">
+        <button
+        className="text-red-700 font-bold hover:text-red-500"
+        aria-label = "cancel"
+        onClick={() => {
+          setSelectedStop(null);
+          setLastDepartures(null);
+          setSelectedDirection(null);
+          setLastBusTime(null);
+          onDurationChange(0);
+          onMissedBusChange(false);
+          setIsOpen(false);
+        }}
+        >
+          ✖︎ キャンセル
+        </button>
+      </div>
     </div>
   );
 }
 
-export default async function Home() {
-  const [destination, setDestination] = useState(initialDestinations[0]);
-  const [isDestinationOpen, setIsDestinationOpen] = useState(false);
-  const [addresses, setAddresses] = useState(initialSavedAddresses);
-  const [isAddPlaceFormOpen, setIsAddPlaceFormOpen] = useState(false);
-  const [savedAddress, setSavedAddress] = useState(initialSavedAddresses[0]);
-  const [newPlaceName, setNewPlaceName] = useState("");
+export default function Home() {
   const [duration, setDuration] = useState(0);
   const [isMissedBus, setIsMissedBus] = useState(false);
+  const [notificationPermission, setNotificationPermission] = useState<NotificationPermission | "unsupported" | null>(null);
+  const [isNotificationEnabled, setIsNotificationEnabled] = useState<boolean | null>(null);
+  const [isNotificationUpdating, setIsNotificationUpdating] = useState(false);
+  const [subscriptionError, setSubscriptionError] = useState<string | null>(null);
 
-  const responseBusStop = await fetch(
-    `${process.env.NEXT_PUBLIC_API_BASE_URL}/bus-stops`
-  );
+  useEffect(() => {
+    if (!("Notification" in window) || !("serviceWorker" in navigator)) {
+      const timerId = window.setTimeout(() => setNotificationPermission("unsupported"), 0);
+      return () => window.clearTimeout(timerId);
+    }
 
-  const responseDemo = await fetch(
-    `${process.env.NEXT_PUBLIC_API_BASE_URL}/last-departures?stopId=demo-akanomiya&date=2026-08-31`
-  );
+    const checkSubscription = async () => {
+      setNotificationPermission(Notification.permission);
 
-  const busStopData = await responseBusStop.json();
-  const demoData = await responseDemo.json();
+      try {
+        const registration = await navigator.serviceWorker.ready;
+        const subscription = await registration.pushManager.getSubscription();
+        setIsNotificationEnabled(subscription !== null);
+      } catch {
+        setSubscriptionError("通知の状態を確認できませんでした。時間をおいて再度お試しください。");
+      }
+    };
 
-  // Debug: log and expose busStopData for inspection
-  console.log("busStopData:", busStopData);
+    void checkSubscription();
+  }, []);
+
+  const subscribeToPushNotifications = async () => {
+    const subscriptionApiUrl = process.env.NEXT_PUBLIC_PUSH_SUBSCRIPTION_API_URL;
+    const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+
+    if (!subscriptionApiUrl || !vapidPublicKey) {
+      throw new Error("通知購読の設定が不足しています。");
+    }
+
+    const registration = await navigator.serviceWorker.ready;
+    const subscription = await registration.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
+    });
+    const response = await fetch(subscriptionApiUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ subscription: subscription.toJSON() }),
+    });
+
+    if (!response.ok) {
+      throw new Error("通知購読情報の送信に失敗しました。");
+    }
+  };
+
+  const requestNotificationPermission = async () => {
+    if (!("Notification" in window)) {
+      setNotificationPermission("unsupported");
+      return;
+    }
+
+    try {
+      setSubscriptionError(null);
+      setIsNotificationUpdating(true);
+      const permission = await Notification.requestPermission();
+      setNotificationPermission(permission);
+
+      if (permission !== "granted") {
+        setSubscriptionError("通知が許可されなかったため、有効にできませんでした。");
+        return;
+      }
+
+      await subscribeToPushNotifications();
+      setIsNotificationEnabled(true);
+    } catch (error) {
+      setSubscriptionError(error instanceof Error ? error.message : "通知購読情報の送信に失敗しました。");
+    } finally {
+      setIsNotificationUpdating(false);
+    }
+  };
+
+  const unsubscribeFromPushNotifications = async () => {
+    try {
+      setSubscriptionError(null);
+      setIsNotificationUpdating(true);
+      const registration = await navigator.serviceWorker.ready;
+      const subscription = await registration.pushManager.getSubscription();
+
+      if (subscription && !(await subscription.unsubscribe())) {
+        throw new Error("通知をオフにできませんでした。時間をおいて再度お試しください。");
+      }
+
+      setIsNotificationEnabled(false);
+    } catch (error) {
+      setSubscriptionError(error instanceof Error ? error.message : "通知をオフにできませんでした。時間をおいて再度お試しください。");
+    } finally {
+      setIsNotificationUpdating(false);
+    }
+  };
 
   return (
     <main className="min-h-screen bg-zinc-50 px-6 py-12 text-zinc-900">
       <div className="mx-auto max-w-xl space-y-8">
-        <header>
-          <h1 className="mt-2 text-3xl font-bold text-teal-800">プロダクト名</h1>
-          <p className="mt-3 text-zinc-400">出発地と終点地を選んで、終バス・終電を確認します。</p>
-        </header>
+        <header><h1 className="mt-2 text-3xl font-bold text-teal-800">プロダクト名</h1><p className="mt-3 text-zinc-400">バスを選んで、終バスの前に通知する</p></header>
 
-        {/* Debug output: show busStopData returned from API */}
-        <section className="rounded-xl bg-white p-4 shadow-sm border border-zinc-200">
-          <h3 className="text-sm font-medium text-zinc-700">Debug: busStopData (API)</h3>
-          <pre className="mt-2 max-h-64 overflow-auto text-xs text-zinc-700">
-            {JSON.stringify(busStopData, null, 2)}
-          </pre>
-        </section>
-
-        <section className="rounded-xl bg-teal-500 p-6 shadow-sm border border-teal-800">
-          <h2 className="text-lg font-bold text-white">終点地</h2>
-          <div className="relative mt-2 ">
-            {isDestinationOpen && (
+        <section className="rounded-xl border border-teal-200 bg-teal-50 p-6 shadow-sm">
+          {notificationPermission === "granted" && isNotificationEnabled ? (
+            <>
+              <p className="mt-2 text-sm text-zinc-700">終バス前の通知はオンです。</p>
               <button
                 type="button"
-                aria-label="終点地の選択メニューを閉じる"
-                className="fixed inset-0 z-10 cursor-default"
-                onClick={() => setIsDestinationOpen(false)}
-              />
-            )}
-
-            <button
-              type="button"
-              aria-haspopup="listbox"
-              aria-expanded={isDestinationOpen}
-              className="relative z-20 flex w-full items-center justify-between rounded-xl border border-teal-800 bg-white px-3 py-2 text-left text-zinc-900 shadow-sm"
-              onClick={() => setIsDestinationOpen((isOpen) => !isOpen)}
-            >
-              <span>{savedAddress}</span>
-              <Image
-                src = "/down-arrow.png"
-                alt = ""
-                width = {20}
-                height = {20}
-                className = {`transition-transform ${
-                  isDestinationOpen ? "rotate-180" : ""
-                }`}
-              />
-            </button>
-
-            {isDestinationOpen && (
-              <div
-                role="listbox"
-                aria-label="終点地"
-                className="absolute z-20 mt-2 w-full overflow-hidden rounded-xl border border-teal-800 bg-white py-1 shadow-lg"
+                className="mt-4 w-full rounded-xl border border-teal-700 bg-white px-4 py-2 text-sm font-bold text-teal-800 hover:bg-teal-100 disabled:cursor-not-allowed disabled:opacity-60"
+                onClick={() => void unsubscribeFromPushNotifications()}
+                disabled={isNotificationUpdating}
               >
-
-                {addresses.map((place) => (
-                  <button
-                    key={place}
-                    type="button"
-                    role="option"
-                    aria-selected={savedAddress === place}
-                    onClick={() => {
-                      setSavedAddress(place);
-                      setIsDestinationOpen(false);
-                    }}
-                    className={`w-full px-3 py-2 text-left text-zinc-900 hover:bg-teal-50 ${
-                      savedAddress === place ? "bg-teal-100 font-bold" : ""
-                    }`}
-                  >
-                    {place}
-                  </button>
-                ))}
-                <div className="mt-1 border-t border-teal-100 pt-1">
-                  <button
-                    type="button"
-                    className="w-full px-3 py-2 text-left text-sm font-medium text-teal-700 hover:bg-teal-50"
-                    onClick={() => setIsAddPlaceFormOpen((isOpen) => !isOpen)}
-                  >
-                    + 新しい場所を追加
-                  </button>
-
-                  {isAddPlaceFormOpen && (
-                    <div className="space-y-3 border-t border-teal-100 px-3 py-3">
-                      <label className="block text-sm font-medium text-zinc-700">
-                        場所の名前
-                        <input
-                          type="text"
-                          name="place-name"
-                          placeholder="例：友人の家"
-                          value={newPlaceName}
-                          onChange={(e) => setNewPlaceName(e.target.value)}
-                          className="mt-1 w-full rounded-lg border border-zinc-300 px-3 py-2 text-zinc-900"
-                        />
-                      </label>
-
-                      <label className="block text-sm font-medium text-zinc-700">
-                        住所
-                        <input
-                          type="text"
-                          name="place-address"
-                          placeholder="例：京都市中京区..."
-                          className="mt-1 w-full rounded-lg border border-zinc-300 px-3 py-2 text-zinc-900"
-                        />
-                      </label>
-
-                      <button
-                        type = "button"
-                        className="mt-1 w-full rounded-lg px-3 py-2 text-sm font-medium text-white hover:bg-teal-500 bg-teal-600"
-                        onClick={() => {
-                          const name = newPlaceName.trim();
-                          if (!name) return;
-                          setAddresses((prev) => [name, ...prev]);
-                          setSavedAddress(name);
-                          setNewPlaceName("");
-                          setIsAddPlaceFormOpen(false);
-                        }}
-                      >
-                        保存
-                      </button>
-                    </div>
-                  )}
-
-                  
-
-                </div>
-              </div>
-            )}
-          </div>
+                {isNotificationUpdating ? "通知をオフにしています..." : "通知をオフにする"}
+              </button>
+            </>
+          ) : notificationPermission === "denied" ? (
+            <p className="mt-2 text-sm text-zinc-700">通知がブロックされています。ブラウザの設定から通知を許可してください。</p>
+          ) : notificationPermission === "unsupported" ? (
+            <p className="mt-2 text-sm text-zinc-700">このブラウザは通知に対応していません。</p>
+          ) : (
+            <>
+              <p className="mt-2 text-sm text-zinc-700">終バスの前に通知を受け取るには、通知を許可してください。</p>
+              <button
+                type="button"
+                className="mt-4 w-full rounded-xl bg-teal-700 px-4 py-2 text-sm font-bold text-white hover:bg-teal-600 disabled:cursor-not-allowed disabled:opacity-60"
+                onClick={() => void requestNotificationPermission()}
+                disabled={isNotificationUpdating || notificationPermission === null}
+              >
+                {isNotificationUpdating ? "通知をオンにしています..." : "通知をオンにする"}
+              </button>
+            </>
+          )}
+          {subscriptionError && <p className="mt-3 text-sm font-medium text-red-700" role="alert">{subscriptionError}</p>}
         </section>
 
-        <section className="rounded-xl bg-teal-500 p-6 shadow-sm border border-teal-800">
-          <h2 className="text-lg font-bold text-white">出発地</h2>
-          <div className="relative mt-2">
-            <BusSelector
-              onDurationChange={setDuration}
-              onMissedBusChange={setIsMissedBus}
-            />
-          </div>
-        </section>
-
-        <section className="rounded-2xl bg-teal-900 p-6 text-white shadow-sm">
-          <p className="text-sm text-zinc-300">終バス出発まで</p>
-
-          <div className="mt-4 flex justify-center">
-            <Timer duration={duration} />
-          </div>
-
-          {isMissedBus && <p className="mt-4 text-center font-bold text-white">バスを逃しました</p>}
-        </section>
-
-        <p className="text-center text-sm text-zinc-500">出発地：{destination} ／ 終点地：{savedAddress}</p>
+        <section className="rounded-xl border border-teal-800 bg-teal-400 p-6 shadow-sm"><h2 className="text-lg font-bold text-white">出発地</h2><div className="relative mt-2"><BusSelector onDurationChange={setDuration} onMissedBusChange={setIsMissedBus} /></div></section>
+        <section className="rounded-2xl bg-teal-800 p-6 text-white shadow-sm"><p className="text-sm text-zinc-300">終バス出発まで</p><div className="mt-4 flex justify-center"><Timer duration={duration} /></div>{isMissedBus && <p className="mt-4 text-center font-bold text-white">バスを逃しました</p>}</section>
       </div>
     </main>
   );
