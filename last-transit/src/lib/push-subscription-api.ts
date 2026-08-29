@@ -32,3 +32,19 @@ export async function savePushSubscription(
 
   return response.json() as Promise<PushSubscriptionResponse>
 }
+
+export async function deactivatePushSubscription(endpoint: string): Promise<void> {
+  if (!endpoint) throw new Error('解除する通知の情報がありません。')
+
+  const baseUrl = import.meta.env.VITE_API_BASE_URL ?? ''
+  const response = await fetch(`${baseUrl}/api/push-subscriptions`, {
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ endpoint }),
+  })
+
+  if (!response.ok) {
+    const body = await response.json().catch(() => null) as { error?: string } | null
+    throw new Error(body?.error ?? '通知解除に失敗しました。')
+  }
+}

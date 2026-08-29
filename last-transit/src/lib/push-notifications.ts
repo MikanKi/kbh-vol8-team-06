@@ -54,3 +54,17 @@ export async function subscribeToPushNotifications(): Promise<PushSubscriptionPa
 
   return subscription.toJSON()
 }
+
+export async function unsubscribeFromPushNotifications(): Promise<string | null> {
+  if (!('serviceWorker' in navigator)) return null
+
+  const registration = await navigator.serviceWorker.getRegistration(serviceWorkerPath)
+  const subscription = await registration?.pushManager.getSubscription()
+  if (!subscription) return null
+
+  const endpoint = subscription.endpoint
+  const didUnsubscribe = await subscription.unsubscribe()
+  if (!didUnsubscribe) throw new Error('ブラウザ上の通知解除に失敗しました。')
+
+  return endpoint
+}

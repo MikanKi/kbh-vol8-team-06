@@ -1,4 +1,4 @@
-import { json, options, savePushSubscription } from '../server/vercel-handlers.js'
+import { deactivatePushSubscription, json, options, savePushSubscription } from '../server/vercel-handlers.js'
 
 export const runtime = 'nodejs'
 
@@ -11,5 +11,13 @@ export async function POST(request: Request) {
     return await savePushSubscription(request)
   } catch (error) {
     return json(request, 500, { error: error instanceof Error ? error.message : '通知設定を保存できませんでした。' })
+  }
+}
+
+export async function DELETE(request: Request) {
+  try {
+    return await deactivatePushSubscription(request)
+  } catch (error) {
+    return json(request, 500, { error: error instanceof Error ? error.message : '通知解除に失敗しました。' })
   }
 }

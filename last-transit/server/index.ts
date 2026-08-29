@@ -35,7 +35,7 @@ function sendJson(response: ServerResponse, statusCode: number, body: unknown, o
   response.writeHead(statusCode, {
     'Access-Control-Allow-Origin': origin,
     'Access-Control-Allow-Headers': 'Content-Type',
-    'Access-Control-Allow-Methods': 'OPTIONS, GET, POST',
+    'Access-Control-Allow-Methods': 'OPTIONS, GET, POST, DELETE',
     'Content-Type': 'application/json; charset=utf-8',
   })
   response.end(JSON.stringify(body))
@@ -101,6 +101,26 @@ const server = createServer(async (request, response) => {
     } catch (error) {
       const message = error instanceof Error ? error.message : '最終便データの取得に失敗しました。'
       respond(500, { error: message })
+      return
+    }
+  }
+
+  if (request.method === 'DELETE' && requestUrl.pathname === '/api/push-subscriptions') {
+    try {
+      const body = await readJson(request) as { endpoint?: string }
+      if (!body.endpoint) {
+        respond(400, { error: '解除する通知のendpointが必要です。' })
+        return
+      }
+
+      await pool.query(
+        'UPDATE push_subscriptions SET is_active = FALSE, updated_at = NOW() WHERE endpoint = $1',
+        [body.endpoint],
+      )
+      respond(200, { status: 'inactive' })
+      return
+    } catch (error) {
+      respond(500, { error: error instanceof Error ? error.message : '通知解除に失敗しました。' })
       return
     }
   }

@@ -27,6 +27,36 @@
 }
 ```
 
+### 失敗レスポンス
+
+```json
+{
+  "error": "通知の購読情報が不完全です。"
+}
+```
+
+`400` はリクエスト不備、`500` は保存失敗です。
+
+## `DELETE /api/push-subscriptions`
+
+ブラウザ側で `PushSubscription.unsubscribe()` を実行した後、同じendpointを使ってサーバー上の購読も無効化します。
+
+### リクエスト
+
+```json
+{
+  "endpoint": "https://push.example.com/..."
+}
+```
+
+### 成功レスポンス
+
+```json
+{
+  "status": "inactive"
+}
+```
+
 ## `POST /api/notification-schedules`
 
 A担当が返した最終便情報に対して、通知予定を作成・更新します。通知時刻はサーバーの日本時間で扱い、UTCのISO 8601文字列で保存・送受信します。

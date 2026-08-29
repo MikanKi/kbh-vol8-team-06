@@ -39,7 +39,7 @@ export function json(request: Request, status: number, body: unknown) {
     headers: {
       'Access-Control-Allow-Origin': allowedOrigin(request),
       'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-      'Access-Control-Allow-Methods': 'OPTIONS, GET, POST',
+      'Access-Control-Allow-Methods': 'OPTIONS, GET, POST, DELETE',
     },
   })
 }
@@ -50,7 +50,7 @@ export function options(request: Request) {
     headers: {
       'Access-Control-Allow-Origin': allowedOrigin(request),
       'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-      'Access-Control-Allow-Methods': 'OPTIONS, GET, POST',
+      'Access-Control-Allow-Methods': 'OPTIONS, GET, POST, DELETE',
     },
   })
 }
@@ -73,6 +73,19 @@ export async function savePushSubscription(request: Request) {
   `, [body.endpoint, body.keys.p256dh, body.keys.auth])
 
   return json(request, 201, { id: result.rows[0].id, status: 'active' })
+}
+
+export async function deactivatePushSubscription(request: Request) {
+  const body = await request.json() as { endpoint?: string }
+  if (!body.endpoint) {
+    return json(request, 400, { error: '解除する通知のendpointが必要です。' })
+  }
+
+  await pool.query(
+    'UPDATE push_subscriptions SET is_active = FALSE, updated_at = NOW() WHERE endpoint = $1',
+    [body.endpoint],
+  )
+  return json(request, 200, { status: 'inactive' })
 }
 
 export async function saveNotificationSchedule(request: Request) {
