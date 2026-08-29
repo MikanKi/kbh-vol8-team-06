@@ -27,7 +27,7 @@ function getRequestDate() {
 function Timer({ duration = 0 }: { duration?: number }) {
   return (
     <CountdownCircleTimer key={duration} isPlaying={duration > 0} duration={duration}
-      colors={["#0099ff", "#F7B801", "#A30000"]} colorsTime={[1800, 900, 300, 0]}
+      colors={["#0099ff", "#F7B801", "#A30000"]} colorsTime={[3600, 1800, 300, 0]}
       isSmoothColorTransition={false}>
       {({ remainingTime }) => {
         const hours = Math.floor(remainingTime / 3600);
@@ -276,7 +276,7 @@ export default function Home() {
   return (
     <main className="min-h-screen bg-zinc-50 px-6 py-12 text-zinc-900">
       <div className="mx-auto max-w-xl space-y-8">
-        <header><h1 className="mt-2 text-3xl font-bold text-teal-800">プロダクト名</h1><p className="mt-3 text-zinc-400">バスを選んで、終バスの前に通知する</p></header>
+        <header><h1 className="mt-2 text-3xl font-bold text-teal-800">最寄りまで急げ！</h1><p className="mt-3 text-zinc-400">バスを選んで、終バスの前に通知する</p></header>
 
         <section className="rounded-xl border border-teal-200 bg-teal-50 p-6 shadow-sm">
           {notificationPermission === "granted" && isNotificationEnabled ? (
