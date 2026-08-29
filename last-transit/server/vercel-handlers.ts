@@ -19,25 +19,21 @@ function isDayType(value: string | null): value is DayType {
   return value === 'weekday' || value === 'saturday' || value === 'holiday'
 }
 
-function allowedOrigin(request: Request) {
+const allowedOrigins = new Set([
+  'http://localhost:3000',
+  'https://xn--u9jxfk1kgb3fzesesccf5551poxrb',
+])
+
+function allowedOrigin(request: Request): string | undefined {
   const origin = request.headers.get('origin')
-  if (!origin) return config.appOrigin
-
-  try {
-    const url = new URL(origin)
-    if (url.hostname === 'localhost' && /^517\d$/.test(url.port)) return origin
-  } catch {
-    // 不正なOriginには本番用の許可Originを返します。
-  }
-
-  return config.appOrigin
+  return origin && allowedOrigins.has(origin) ? origin : undefined
 }
 
 export function json(request: Request, status: number, body: unknown) {
   return Response.json(body, {
     status,
     headers: {
-      'Access-Control-Allow-Origin': allowedOrigin(request),
+      ...(allowedOrigin(request) ? { 'Access-Control-Allow-Origin': allowedOrigin(request) } : {}),
       'Access-Control-Allow-Headers': 'Content-Type, Authorization',
       'Access-Control-Allow-Methods': 'OPTIONS, GET, POST, DELETE',
     },
@@ -48,7 +44,7 @@ export function options(request: Request) {
   return new Response(null, {
     status: 204,
     headers: {
-      'Access-Control-Allow-Origin': allowedOrigin(request),
+      ...(allowedOrigin(request) ? { 'Access-Control-Allow-Origin': allowedOrigin(request) } : {}),
       'Access-Control-Allow-Headers': 'Content-Type, Authorization',
       'Access-Control-Allow-Methods': 'OPTIONS, GET, POST, DELETE',
     },

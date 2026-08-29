@@ -16,24 +16,19 @@ type NotificationScheduleRequest = {
 
 type DayType = 'weekday' | 'saturday' | 'holiday'
 
-function corsOrigin(request: IncomingMessage) {
+const allowedOrigins = new Set([
+  'http://localhost:3000',
+  'https://xn--u9jxfk1kgb3fzesesccf5551poxrb',
+])
+
+function corsOrigin(request: IncomingMessage): string | undefined {
   const origin = request.headers.origin
-  if (!origin) return config.appOrigin
-
-  try {
-    const url = new URL(origin)
-    const isViteDevelopmentServer = url.hostname === 'localhost' && /^517\d$/.test(url.port)
-    if (isViteDevelopmentServer) return origin
-  } catch {
-    // 不正なOriginは本番用の許可Originとして扱います。
-  }
-
-  return config.appOrigin
+  return origin && allowedOrigins.has(origin) ? origin : undefined
 }
 
-function sendJson(response: ServerResponse, statusCode: number, body: unknown, origin: string) {
+function sendJson(response: ServerResponse, statusCode: number, body: unknown, origin?: string) {
   response.writeHead(statusCode, {
-    'Access-Control-Allow-Origin': origin,
+    ...(origin ? { 'Access-Control-Allow-Origin': origin } : {}),
     'Access-Control-Allow-Headers': 'Content-Type',
     'Access-Control-Allow-Methods': 'OPTIONS, GET, POST, DELETE',
     'Content-Type': 'application/json; charset=utf-8',
