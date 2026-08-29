@@ -5,7 +5,9 @@
 BEGIN;
 
 INSERT INTO bus_stops (source, stop_id, stop_name, stop_lat, stop_lon)
-VALUES ('kyoto-bus', 'demo-akanomiya', '赤の宮', NULL, NULL)
+VALUES
+  ('kyoto-bus', 'demo-akanomiya', '赤の宮', NULL, NULL),
+  ('kyoto-bus', 'demo-asagirogaharacho', '朝露ヶ原町', NULL, NULL)
 ON CONFLICT (source, stop_id) DO UPDATE
 SET stop_name = EXCLUDED.stop_name, stop_lat = EXCLUDED.stop_lat, stop_lon = EXCLUDED.stop_lon;
 
@@ -39,7 +41,13 @@ INSERT INTO bus_departures (
   ('kyoto-bus', 'demo-demachiyanagi-holiday', 'demo-akanomiya', 1, 'demo-holiday', 'demo-demachiyanagi', '京都バス', '出町柳駅前行', 79320),
   ('kyoto-bus', 'demo-kyoto-station-holiday', 'demo-akanomiya', 1, 'demo-holiday', 'demo-kyoto-station', '京都バス', '京都駅前行', 79320),
   ('kyoto-bus', 'demo-shijo-kawaramachi-holiday', 'demo-akanomiya', 1, 'demo-holiday', 'demo-shijo-kawaramachi', '京都バス', '四条河原町行', 79320),
-  ('kyoto-bus', 'demo-sanjo-keihan-holiday', 'demo-akanomiya', 1, 'demo-holiday', 'demo-sanjo-keihan', '京都バス', '三条京阪前行', 79320)
+  ('kyoto-bus', 'demo-sanjo-keihan-holiday', 'demo-akanomiya', 1, 'demo-holiday', 'demo-sanjo-keihan', '京都バス', '三条京阪前行', 79320),
+  ('kyoto-bus', 'demo-asagirogaharacho-demachiyanagi-weekday', 'demo-asagirogaharacho', 1, 'demo-weekday', 'demo-demachiyanagi', '京都バス', '出町柳駅前行', 73080),
+  ('kyoto-bus', 'demo-asagirogaharacho-kitaoji-weekday', 'demo-asagirogaharacho', 1, 'demo-weekday', 'demo-kitaoji-terminal', '京都バス', '北大路バスターミナル行', 73080),
+  ('kyoto-bus', 'demo-asagirogaharacho-demachiyanagi-saturday', 'demo-asagirogaharacho', 1, 'demo-saturday', 'demo-demachiyanagi', '京都バス', '出町柳駅前行', 68580),
+  ('kyoto-bus', 'demo-asagirogaharacho-kitaoji-saturday', 'demo-asagirogaharacho', 1, 'demo-saturday', 'demo-kitaoji-terminal', '京都バス', '北大路バスターミナル行', 68580),
+  ('kyoto-bus', 'demo-asagirogaharacho-demachiyanagi-holiday', 'demo-asagirogaharacho', 1, 'demo-holiday', 'demo-demachiyanagi', '京都バス', '出町柳駅前行', 68580),
+  ('kyoto-bus', 'demo-asagirogaharacho-kitaoji-holiday', 'demo-asagirogaharacho', 1, 'demo-holiday', 'demo-kitaoji-terminal', '京都バス', '北大路バスターミナル行', 68580)
 ON CONFLICT (source, trip_id, stop_id, stop_sequence) DO UPDATE
 SET service_id = EXCLUDED.service_id, route_id = EXCLUDED.route_id, route_name = EXCLUDED.route_name,
     trip_headsign = EXCLUDED.trip_headsign, departure_seconds = EXCLUDED.departure_seconds;
