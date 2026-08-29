@@ -21,6 +21,36 @@ npm run dev
 
 リポジトリ直下の `.github/workflows/ci.yml` に、GitHub Actionsの自動チェックを用意しています。`main` へのpushとPull Requestで、Node.js 20による `npm ci` と `npm run build` を実行します。GitHubへリポジトリをpushすれば、Actionsタブから実行結果を確認できます。
 
+## Vercel（Hobby）へのデプロイ
+
+Vercelでは、画面（Vite）と次のAPIを同じプロジェクトにデプロイできます。
+
+- `GET /api/manual-last-departures`
+- `POST /api/push-subscriptions`
+- `POST /api/notification-schedules`
+
+Vercelの「Add New > Project」でGitHubリポジトリをImportし、**Root Directory** に `last-transit` を指定してください。`vercel.json` により、`npm run build` と `dist` が自動で使用されます。
+
+Environment Variablesには次を設定します。値はローカルの `.env.local` と `.env.server` を参照し、値そのものをGitへ保存しません。
+
+```text
+DATABASE_URL
+VAPID_SUBJECT
+VAPID_PUBLIC_KEY
+VAPID_PRIVATE_KEY
+VITE_VAPID_PUBLIC_KEY
+APP_ORIGIN
+CRON_SECRET
+```
+
+`APP_ORIGIN` には公開後のVercel URL（例：`https://your-project.vercel.app`）を設定します。`DATABASE_URL` はSupabaseのSession pooler接続文字列を使います。パスワードに `@` などが含まれる場合はURLエンコードしてください。
+
+HobbyプランのCronは1日1回までで実行時刻の精度も保証されないため、最終便直前のPush通知には使えません。そのためHobbyでは通知予定の保存までを公開し、実送信はローカルの `npm run notify:watch` または将来の外部スケジューラで行います。Vercel Proへ移行したときは、`/api/cron/send-due-notifications` を1分ごとに呼び出すCronを追加します。
+
+## 結合テスト
+
+画面、通知API、Supabase、Web Pushをつないだローカル結合テストは [docs/integration-test.md](docs/integration-test.md) に従って実行します。
+
 ## C担当：通知基盤の利用方法
 
 `src/lib/push-notifications.ts` の `subscribeToPushNotifications()` を、画面側の「通知を有効にする」ボタンから呼び出します。戻り値の購読情報は、バックエンドの `POST /api/push-subscriptions` に送信して保存します。
