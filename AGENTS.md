@@ -23,7 +23,7 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 <!-- 実際のバージョンは package.json を見て書き換えること -->
 
 - React 19 + TypeScript
-- Vite（開発サーバとビルド）
+- Next.js（開発サーバとビルド）
 - Tailwind CSS v4
 - パッケージマネージャは **npm**（pnpm / yarn は使わない）
 - Node.js は v20 以上
