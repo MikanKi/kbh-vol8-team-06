@@ -210,18 +210,14 @@ export default function Home() {
       userVisibleOnly: true,
       applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
     });
-    
-    console.log("URL:", subscriptionApiUrl);
-    console.log("subscription:", subscription.toJSON());
 
+    console.log("start fetch");
     const response = await fetch(subscriptionApiUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(subscription.toJSON()),
-    });
-
-    console.log("status:", response.status);
-    console.log("response:", await response.text());
+    })
+    console.log("finish fetch");
 
     
     if (!response.ok) {
