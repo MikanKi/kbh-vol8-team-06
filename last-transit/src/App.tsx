@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import NotificationSetup from './components/NotificationSetup'
 import ManualLastDeparture from './components/ManualLastDeparture'
-import { savePushSubscription } from './lib/push-subscription-api'
+import { deactivatePushSubscription, savePushSubscription } from './lib/push-subscription-api'
 
 export default function App() {
   const [pushSubscriptionId, setPushSubscriptionId] = useState<string | null>(null)
@@ -17,6 +17,12 @@ export default function App() {
     return response
   }
 
+  async function handleUnsubscribed(endpoint: string) {
+    await deactivatePushSubscription(endpoint)
+    localStorage.removeItem('pushSubscriptionId')
+    setPushSubscriptionId(null)
+  }
+
   return (
     <main className="mx-auto min-h-screen max-w-xl px-5 py-12">
       <p className="text-sm font-semibold text-teal-700">京都府</p>
@@ -26,7 +32,7 @@ export default function App() {
         <ManualLastDeparture pushSubscriptionId={pushSubscriptionId} />
       </div>
       <div className="mt-5">
-        <NotificationSetup onSubscribed={handleSubscribed} />
+        <NotificationSetup onSubscribed={handleSubscribed} onUnsubscribed={handleUnsubscribed} />
       </div>
     </main>
   )

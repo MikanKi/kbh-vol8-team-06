@@ -2,14 +2,16 @@ import { useEffect, useState } from 'react'
 import {
   subscribeToPushNotifications,
   supportsPushNotifications,
+  unsubscribeFromPushNotifications,
   type PushSubscriptionPayload,
 } from '../lib/push-notifications'
 
 type NotificationSetupProps = {
   onSubscribed?: (subscription: PushSubscriptionPayload) => Promise<{ id: string }>
+  onUnsubscribed?: (endpoint: string) => Promise<void>
 }
 
-export default function NotificationSetup({ onSubscribed }: NotificationSetupProps) {
+export default function NotificationSetup({ onSubscribed, onUnsubscribed }: NotificationSetupProps) {
   const [isSupported, setIsSupported] = useState(false)
   const [status, setStatus] = useState('通知はまだ有効ではありません。')
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -29,6 +31,21 @@ export default function NotificationSetup({ onSubscribed }: NotificationSetupPro
       setStatus('通知を有効にしました。')
     } catch (error) {
       const message = error instanceof Error ? error.message : '通知の設定に失敗しました。'
+      setStatus(message)
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  async function handleUnsubscribe() {
+    setIsSubmitting(true)
+
+    try {
+      const endpoint = await unsubscribeFromPushNotifications()
+      if (endpoint) await onUnsubscribed?.(endpoint)
+      setStatus('通知を解除しました。')
+    } catch (error) {
+      const message = error instanceof Error ? error.message : '通知の解除に失敗しました。'
       setStatus(message)
     } finally {
       setIsSubmitting(false)
@@ -56,6 +73,14 @@ export default function NotificationSetup({ onSubscribed }: NotificationSetupPro
         type="button"
       >
         {isSubmitting ? '設定中...' : '通知を有効にする'}
+      </button>
+      <button
+        className="mt-3 block text-sm font-medium text-slate-700 underline disabled:cursor-not-allowed disabled:text-slate-400"
+        disabled={isSubmitting}
+        onClick={handleUnsubscribe}
+        type="button"
+      >
+        通知を解除する
       </button>
       <p aria-live="polite" className="mt-3 text-sm text-slate-600">
         {status}
