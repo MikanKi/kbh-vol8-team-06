@@ -1,32 +1,26 @@
-import { FormEvent, useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import NotificationSetup from './components/NotificationSetup'
-import { getBusStops, getLastDepartures, type BusStop, type LastDeparture } from './lib/last-departures-api'
-import { savePushSubscription } from './lib/push-subscription-api'
+import ManualLastDeparture from './components/ManualLastDeparture'
+import { deactivatePushSubscription, savePushSubscription } from './lib/push-subscription-api'
 
 export default function App() {
-  const [stopId, setStopId] = useState('')
-  const [departures, setDepartures] = useState<LastDeparture[]>([])
-  const [stops, setStops] = useState<BusStop[]>([])
-  const [status, setStatus] = useState<string | null>(null)
-  const [loading, setLoading] = useState(false)
+  const [pushSubscriptionId, setPushSubscriptionId] = useState<string | null>(null)
 
   useEffect(() => {
-    getBusStops().then(setStops).catch((error) => setStatus(error instanceof Error ? error.message : '停留所を取得できませんでした。'))
+    setPushSubscriptionId(localStorage.getItem('pushSubscriptionId'))
   }, [])
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    const id = stopId.trim()
-    if (!id) { setStatus('停留所IDを入力してください。'); return }
-    setLoading(true); setStatus(null)
-    try {
-      const result = await getLastDepartures(id)
-      setDepartures(result.departures)
-      setStatus(result.departures.length ? `${result.serviceDate} の最終便です。` : '該当する最終便はありません。')
-    } catch (error) {
-      setDepartures([])
-      setStatus(error instanceof Error ? error.message : '最終便データを取得できませんでした。')
-    } finally { setLoading(false) }
+  async function handleSubscribed(subscription: Parameters<typeof savePushSubscription>[0]) {
+    const response = await savePushSubscription(subscription)
+    localStorage.setItem('pushSubscriptionId', response.id)
+    setPushSubscriptionId(response.id)
+    return response
+  }
+
+  async function handleUnsubscribed(endpoint: string) {
+    await deactivatePushSubscription(endpoint)
+    localStorage.removeItem('pushSubscriptionId')
+    setPushSubscriptionId(null)
   }
 
   return (
@@ -49,7 +43,10 @@ export default function App() {
         <ul className="divide-y divide-slate-100">{departures.map((departure) => <li className="flex items-center justify-between gap-4 px-5 py-4" key={`${departure.tripId}-${departure.departureTime}`}><div><p className="font-semibold text-slate-900">{departure.routeName}</p><p className="text-sm text-slate-600">{departure.headsign || '行先情報なし'}</p></div><time className="text-lg font-bold text-teal-700">{departure.departureTime}</time></li>)}</ul>
       </section>}
       <div className="mt-8">
-        <NotificationSetup onSubscribed={savePushSubscription} />
+        <ManualLastDeparture pushSubscriptionId={pushSubscriptionId} />
+      </div>
+      <div className="mt-5">
+        <NotificationSetup onSubscribed={handleSubscribed} onUnsubscribed={handleUnsubscribed} />
       </div>
     </main>
   )
