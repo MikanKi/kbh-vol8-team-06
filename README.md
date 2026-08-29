@@ -28,6 +28,7 @@
 - `npm run build` … 壊れていないかの確認。PR を出す前に必ず通す
 
 ## チーム
+
 | 役割 | 名前 | GitHub |
 | --- | フェリシア | MikanKi |
 | --- | 宇野 | YuichiroUno |
